@@ -1,0 +1,43 @@
+#include <iostream>
+#include <cmath>
+
+double f(double x) {
+    return sin(x);
+}
+
+double leftDifference(double x, double h) {
+    return (f(x) - f(x - h)) / h;
+}
+
+double rightDifference(double x, double h) {
+    return (f(x + h) - f(x)) / h;
+}
+
+double centralDifference(double x, double h) {
+    return (f(x + h) - f(x - h)) / (2 * h);
+}
+
+double exactDerivative(double x) {
+    return cos(x);
+}
+
+int main() {
+    double h = 0.01;
+    
+    std::cout << "Производные sin(x) с шагом h = " << h << "\n\n";
+    std::cout << "x\t\tТочная\t\tЛевая\t\tПравая\t\tЦентральная\n";
+    std::cout << "------------------------------------------------------------\n";
+    
+    // Тестируем в нескольких точках
+    for (double x = 0; x <= 3.14; x += 0.5) {
+        double exact = exactDerivative(x);
+        double left = leftDifference(x, h);
+        double right = rightDifference(x, h);
+        double central = centralDifference(x, h);
+        
+        std::cout << x << "\t\t" << exact << "\t\t" << left << "\t\t" 
+                  << right << "\t\t" << central << "\n";
+    }
+    
+    return 0;
+}
