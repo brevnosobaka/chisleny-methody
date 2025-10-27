@@ -32,3 +32,55 @@ int main()
 
     return 0;
 }
+V2: с сортировкой
+#include <iostream>
+
+using namespace std;
+
+int main()
+{
+    const int n = 5;
+    double X[n], Y[n];
+
+    cout << "Vvedite " << n << " uzlov (x y):" << endl;
+    for (int i = 0; i < n; i++) {
+        cout << "Uzel " << i + 1 << ": ";
+        cin >> X[i] >> Y[i];
+    }
+
+    // Сортировка узлов по возрастанию x (пузырьковая сортировка)
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (X[j] > X[j + 1]) {
+                // Обмен значений x
+                double tempX = X[j];
+                X[j] = X[j + 1];
+                X[j + 1] = tempX;
+                
+                // Обмен соответствующих значений y
+                double tempY = Y[j];
+                Y[j] = Y[j + 1];
+                Y[j + 1] = tempY;
+            }
+        }
+    }
+
+    double x;
+    cout << "\nVvedite x dlya interpolyacii: ";
+    cin >> x;
+
+    double result = 0;
+    for (int i = 0; i < n - 1; i++) {
+        if (x >= X[i] && x <= X[i + 1]) {
+            result = Y[i] + (Y[i + 1] - Y[i]) * (x - X[i]) / (X[i + 1] - X[i]);
+            break;
+        }
+    }
+
+    if (x < X[0]) result = Y[0];
+    if (x > X[n - 1]) result = Y[n - 1];
+
+    cout << "f(" << x << ") = " << result << endl;
+
+    return 0;
+}
