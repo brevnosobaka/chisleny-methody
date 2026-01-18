@@ -1,1 +1,193 @@
+#include <iostream>
+#include <cmath>
+#include <locale>
+#include <algorithm>
+#include <iomanip>
+using namespace std;
+
+class GaussInterpolator {
+//здесь хранятся внутрение переменные
+private:
+    int N; //размер массива узлов
+    double* x; //сами узлы, где известна функция
+    double* y; //и значения функции в этих узлах
+    double** d;  //здесь хранится таблица конечных разностей
+    int mid;    //здесь индекс узла в середине
+    double h;     //это шаг(одинаковое расстояние) между узлами
+
+public:
+    //это конструктор. тут мы выделяем память под массивы х и у,
+    // а так же создаем таблицу конечных разностей, программа запоминает индекс узла в середине.
+    GaussInterpolator(int N) : N(N) {
+        x = new double[N];
+        y = new double[N];
+
+        d = new double* [N];
+        for (int i = 0; i < N; i++)
+            d[i] = new double[N];
+
+        mid = (N - 1) / 2; //вычисление индекса центрального узла
+    }
+    //здесь деструктор для освобождения памяти, нужен из-за функции new
+    ~GaussInterpolator() {
+        for (int i = 0; i < N; i++)
+            delete[] d[i];
+        delete[] d;
+        delete[] x;
+        delete[] y;
+    }
+
+    // тут ввод массива узлов х в количесве i штук, а так же вычисление шага h
+    void readX() {
+        cout << "Введите узлы x (равноотстоящие):\n";
+        for (int i = 0; i < N; i++)
+            cin >> x[i];
+        sort(x, x + N);
+        h = x[1] - x[0]; //вычисление шага
+
+        // Проверяем равноотстоящие
+        for (int i = 1; i < N - 1; i++) {
+            double h2 = x[i + 1] - x[i];
+            if (fabs(h2 - h) > 1e-9) { //проверка на то что узлы равноотстоящие
+                cout << "Узлы не равноотстоящие! Формула Гаусса неприменима.\n";
+                exit(0);
+            }
+        }
+    }
+
+    // здесь пользователь вводит или выбирает функцию для интерполяции и заполняется массив y[i]
+    void readY() {
+        cout << "\nВыберите функцию:\n";
+        cout << "1 — y = 1/x\n";
+        cout << "2 — y = x^5\n";
+        cout << "3 — Ввести значения y вручную\n";
+
+        int choice;
+        cin >> choice;
+
+        if (choice == 1) {
+            for (int i = 0; i < N; i++)
+                y[i] = 1.0 / x[i];
+        }
+        else if (choice == 2) {
+            for (int i = 0; i < N; i++)
+                y[i] = pow(x[i], 5);
+        }
+        else {
+            cout << "Введите значения y:\n";
+            for (int i = 0; i < N; i++)
+                cin >> y[i];
+        }
+    }
+
+    // Факториал
+    double factorial(int n) {
+        double result = 1.0;
+        for (int i = 2; i <= n; i++)
+            result *= i;
+        return result;
+    }
+
+    // Полином Гаусса
+    double gaussPolynomial(double q, int k) {
+        if (k == 0) return 1.0;
+        if (k == 1) return q;
+
+        double result = 1.0;
+
+        // Чередующиеся множители: (q), (q-1), (q+1), (q-2), (q+2), ...
+        for (int i = 1; i <= k; i++) {
+            if (i % 2 == 1) {
+                result *= (q - (i - 1) / 2);
+            }
+            else {
+                result *= (q + (i / 2));
+            }
+        }
+        return result;
+    }
+
+    // Построение таблицы конечных разностей (первый столбец - значения функции, следующие -разности предыдущего
+    void buildDiffTable() {
+        for (int i = 0; i < N; i++)
+            d[i][0] = y[i];
+
+        for (int j = 1; j < N; j++)
+            for (int i = 0; i < N - j; i++)
+                d[i][j] = d[i + 1][j - 1] - d[i][j - 1];
+    }
+    // Вывод таблицы конечных разностей
+    void printDiffTable() {
+        cout << "\nТАБЛИЦА КОНЕЧНЫХ РАЗНОСТЕЙ:\n";
+        cout << "i\tx\t\ty";
+        for (int j = 1; j < N; j++) {
+            cout << "\t\tD" << j << "_y";
+        }
+        cout << "\n";
+        cout << "------------------------------------------------------------------------\n";
+
+        for (int i = 0; i < N; i++) {
+            cout << i << "\t" << fixed << setprecision(2) << x[i];
+            cout << "\t" << scientific << setprecision(6) << d[i][0];
+
+            for (int j = 1; j < N - i; j++) {
+                cout << "\t" << scientific << setprecision(6) << d[i][j];
+            }
+            cout << "\n";
+        }
+    }
+    // Формула Гаусса
+    //программа определяет насколько х смещен относительно центра, берет значение функции в центре,
+    // считает нужный полином из q(q-1)...., берет соответстующую разность и делит на факториал,
+    //затем все это складывается и получается интерполяция
+    double interpolate(double X) {
+        double q = (X - x[mid]) / h; //q- сколько шагов отделяет точку от центра
+        double sum = d[mid][0]; //начало в y в узле в середине
+        for (int k = 1; k < N; k++) {
+            int idx = mid - (k / 2); //выбираем следующую разность по диагонали влево вверх от среднего узла y
+            if (idx < 0 || idx >= N - k)
+                break;
+            sum += gaussPolynomial(q, k) * d[idx][k] / factorial(k);
+        }
+
+        return sum;
+    }
+
+    // просто вывод результата
+    void printResults(int choice) {
+        cout << "\nИнтерполяция в узлах:\n";
+        for (int i = 0; i < N; i++) {
+            double interp = interpolate(x[i]);
+
+            cout << "x = " << x[i]
+                << "   интерполяция = " << interp;
+
+            if (choice == 1) {
+                cout << "   точное = " << 1.0 / x[i]
+                    << "   ошибка = " << interp - 1.0 / x[i];
+            }
+            else if (choice == 2) {
+                cout << "   точное = " << pow(x[i], 5)
+                    << "   ошибка = " << interp - pow(x[i], 5);
+            }
+            cout << "\n";
+        }
+    }
+};
+
+int main() {
+    setlocale(LC_ALL, "Russian"); //просто русский текст
+
+    cout << "Введите количество узлов N: ";
+    int N;
+    cin >> N;
+
+    GaussInterpolator G(N);
+    G.readX();
+    G.readY();
+    G.buildDiffTable();
+    G.printDiffTable();
+    G.printResults(0);  
+    return 0;
+}
 
