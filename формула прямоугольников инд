@@ -1,1 +1,82 @@
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+#include <clocale>
+#include <string>
 
+using namespace std;
+
+const double PI = acos(-1.0);
+
+// --- Функции и их первообразные ---
+double f1(double x) { return 4 * x - 3; }
+double F1(double x) { return 2 * x * x - 3 * x; }
+
+double f2(double x) { return x * sin(x); }
+double F2(double x) { return sin(x) - x * cos(x); }
+
+// --- Реализация методов ---
+double mLeft(double (*f)(double), double a, double b, int n) {
+    double h = (b - a) / n;
+    double sum = 0;
+    for (int i = 0; i < n; i++) sum += f(a + i * h);
+    return sum * h;
+}
+
+double mRight(double (*f)(double), double a, double b, int n) {
+    double h = (b - a) / n;
+    double sum = 0;
+    for (int i = 1; i <= n; i++) sum += f(a + i * h);
+    return sum * h;
+}
+
+double mMiddle(double (*f)(double), double a, double b, int n) {
+    double h = (b - a) / n;
+    double sum = 0;
+    for (int i = 0; i < n; i++) sum += f(a + (i + 0.5) * h);
+    return sum * h;
+}
+
+// --- Универсальный расчет и сравнение ---
+void printResults(double (*f)(double), double a, double b, double exact, string title) {
+    int n = 100;
+    cout << "======= " << title << " =======" << endl;
+    cout << "Точное значение (аналитически): " << exact << endl << endl;
+    cout << setw(15) << "Метод" << setw(15) << "Значение" << setw(15) << "Погр.Рунге" << setw(15) << "погрешность" << endl;
+    cout << "------------------------------------------------------------" << endl;
+
+    // Список методов для цикла: 0-левые, 1-правые (p=1), 2-средние (p=2)
+    for (int m = 0; m < 3; m++) {
+        string name;
+        double res_n, res_2n, p;
+
+        if (m == 0) {
+            name = "Левые"; p = 1;
+            res_n = mLeft(f, a, b, n); res_2n = mLeft(f, a, b, n * 2);
+        }
+        else if (m == 1) {
+            name = "Правые"; p = 1;
+            res_n = mRight(f, a, b, n); res_2n = mRight(f, a, b, n * 2);
+        }
+        else {
+            name = "Средние"; p = 2;
+            res_n = mMiddle(f, a, b, n); res_2n = mMiddle(f, a, b, n * 2);
+        }
+
+        double runge = abs(res_2n - res_n) / (pow(2, p) - 1);
+        double actual = abs(exact - res_2n);
+
+        cout << setw(15) << name << setw(15) << res_2n << setw(15) << runge << setw(15) << actual << endl;
+    }
+    cout << endl;
+}
+
+int main() {
+    setlocale(LC_ALL, "rus");
+    cout << fixed << setprecision(6);
+
+    printResults(f1, 2, 6, F1(6) - F1(2), "ИНТЕГРАЛ (4x - 3) dx");
+    printResults(f2, 0, 2 * PI, F2(2 * PI) - F2(0), "ИНТЕГРАЛ x*sin(x) dx");
+
+    return 0;
+}
