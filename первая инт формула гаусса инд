@@ -8,7 +8,7 @@ using namespace std;
 class GaussInterpolator {
 //здесь хранятся внутрение переменные
 private:
-    int N; //размер массива узлов
+    int N; //колиество точек, которые мы вводим
     double* x; //сами узлы, где известна функция
     double* y; //и значения функции в этих узлах
     double** d;  //здесь хранится таблица конечных разностей
@@ -45,12 +45,12 @@ public:
         sort(x, x + N);
         h = x[1] - x[0]; //вычисление шага
 
-        // Проверяем равноотстоящие
+        // проверяем
         for (int i = 1; i < N - 1; i++) {
             double h2 = x[i + 1] - x[i];
             if (fabs(h2 - h) > 1e-9) { //проверка на то что узлы равноотстоящие
-                cout << "Узлы не равноотстоящие! Формула Гаусса неприменима.\n";
-                exit(0);
+                //cout << "Узлы не равноотстоящие! Формула Гаусса неприменима.\n";
+               throw "Узлы не равноотстоящие!Формула Гаусса неприменима. ";
             }
         }
     }
@@ -178,16 +178,24 @@ public:
 int main() {
     setlocale(LC_ALL, "Russian"); //просто русский текст
 
-    cout << "Введите количество узлов N: ";
-    int N;
-    cin >> N;
+        cout << "Введите количество узлов N: ";
+        int N;
+        cin >> N;
 
-    GaussInterpolator G(N);
-    G.readX();
-    G.readY();
-    G.buildDiffTable();
-    G.printDiffTable();
-    G.printResults(0);  
-    return 0;
-}
-
+        GaussInterpolator G(N);
+        while (true) {
+            try {
+                G.readX();
+                break;
+            }
+            catch (const char* message) {
+                cout << message << "Попробуйте еще раз...\n\n";
+            }
+        }
+       
+        G.readY();
+        G.buildDiffTable();
+        G.printDiffTable();
+        G.printResults(0);
+        return 0;
+    }
