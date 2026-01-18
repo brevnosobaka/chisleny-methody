@@ -1,0 +1,111 @@
+#include <iostream>
+#include <cmath>
+#include <iomanip>
+
+using namespace std;
+
+// Исходная функция
+double f(double x) {
+    return x * x * x * x + x - 6;
+}
+
+// Первая производная (методом центральных разностей)
+double f1(double x, double h = 1e-5) {
+    return (f(x + h) - f(x - h)) / (2 * h);
+}
+
+// Вторая производная
+double f2(double x, double h = 1e-5) {
+    return (f(x + h) - 2 * f(x) + f(x - h)) / (h * h);
+}
+
+double newton_method(double a, double b, double eps) {
+    cout << "\nМетод Ньютона для уравнения x^4 + x - 6 = 0" << endl;
+    cout << "Отрезок: [" << a << ", " << b << "], Точность: " << eps << endl;
+
+    double xi, xn;
+    int n = 0;
+
+    // Выбор начального приближения с использованием численной производной
+    if (f(b) * f2(b) > 0) {
+        xi = b;
+    }
+    else {
+        xi = a;
+    }
+
+    cout << "Начальное приближение: x0 = " << fixed << setprecision(6) << xi << endl << endl;
+
+    cout << " n |     x_n     |    f(x_n)    |  f'(x_n)     |  Разность" << endl;
+    cout << "---|-------------|--------------|--------------|-----------" << endl;
+
+    // Первая строка (начальное приближение)
+    cout << setw(2) << 0 << " | " << setw(11) << fixed << setprecision(8) << xi
+        << " | " << setw(12) << fixed << setprecision(8) << f(xi)
+        << " | " << setw(12) << fixed << setprecision(8) << f1(xi)
+        << " |     -" << endl;
+
+    do {
+        n++;
+        xn = xi;
+
+        // Вычисляем производную численно
+        double df = f1(xn);
+
+        if (fabs(df) < 1e-15) {
+            cout << "\nПроизводная близка к нулю! f'(" << xn << ") = " << df << endl;
+            break;
+        }
+
+        // Формула Ньютона с численной производной
+        xi = xn - f(xn) / df;
+
+        cout << setw(2) << n << " | " << setw(11) << fixed << setprecision(8) << xi
+            << " | " << setw(12) << fixed << setprecision(8) << f(xi)
+            << " | " << setw(12) << fixed << setprecision(8) << f1(xi)
+            << " | " << setw(11) << fixed << setprecision(8) << fabs(xi - xn) << endl;
+
+        if (n > 50) {
+            cout << "\nПревышено максимальное число итераций!" << endl;
+            break;
+        }
+
+    } while (fabs(xi - xn) > eps);
+
+    cout << endl;
+    return xi;
+}
+
+int main() {
+    setlocale(LC_ALL, "Russian");
+
+    double a, b;
+    double eps = 1e-6;
+
+    cout << "Решение уравнения x^4 + x - 6 = 0 методом Ньютона (касательных)" << endl;
+    cout << "______________________________________________________________" << endl;
+
+    cout << "Введите начало отрезка a: ";
+    cin >> a;
+
+    cout << "Введите конец отрезка b: ";
+    cin >> b;
+
+    // Проверка существования корня
+    if (f(a) * f(b) > 0) {
+        cout << "\nОшибка: На отрезке [" << a << ", " << b << "] нет корня!" << endl;
+        cout << "f(" << a << ") = " << f(a) << ", f(" << b << ") = " << f(b) << endl;
+        return 1;
+    }
+
+    double root = newton_method(a, b, eps);
+
+    cout << "================================================" << endl;
+    cout << "Результат: корень = " << fixed << setprecision(10) << root << endl;
+    cout << "Проверка: f(" << fixed << setprecision(10) << root << ") = " << f(root) << endl;
+    cout << "Производная в корне: f'(" << fixed << setprecision(10) << root << ") = "
+        << f1(root) << endl;
+    cout << "================================================" << endl;
+
+    return 0;
+}
