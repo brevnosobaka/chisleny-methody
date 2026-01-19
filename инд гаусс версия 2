@@ -1,0 +1,181 @@
+#include <iostream>
+#include <cmath>
+#include <locale>
+#include <algorithm>
+#include <iomanip>
+#include <vector>
+
+using namespace std;
+
+class GaussInterpolator {
+private:
+    int N;
+    double* x;
+    double* y;
+    double** d;
+    int mid;
+    double h;
+
+public:
+    GaussInterpolator(int N) : N(N) {
+        x = new double[N];
+        y = new double[N];
+        d = new double* [N];
+        for (int i = 0; i < N; i++)
+            d[i] = new double[N];
+        mid = (N - 1) / 2;
+    }
+
+    ~GaussInterpolator() {
+        for (int i = 0; i < N; i++) delete[] d[i];
+        delete[] d;
+        delete[] x;
+        delete[] y;
+    }
+
+    void readX() {
+        cout << "Введите узлы x (" << N << " равноотстоящих значений):\n";
+        for (int i = 0; i < N; i++) cin >> x[i];
+
+        // Очистка буфера после ввода всех x
+        cin.clear();
+        cin.ignore(10000, '\n');
+
+        sort(x, x + N);
+        h = x[1] - x[0];
+
+        for (int i = 1; i < N - 1; i++) {
+            double h2 = x[i + 1] - x[i];
+            if (fabs(h2 - h) > 1e-9) {
+                throw "Ошибка: Узлы не равноотстоящие! Формула Гаусса неприменима.";
+            }
+        }
+    }
+
+    int readY() {
+        cout << "\nВыберите функцию:\n";
+        cout << "1 — y = 1/x\n";
+        cout << "2 — y = x^5\n";
+        cout << "3 — Ввести значения y вручную\n";
+        cout << "Ваш выбор: ";
+
+        int choice;
+        cin >> choice;
+
+        if (choice == 1) {
+            for (int i = 0; i < N; i++) y[i] = 1.0 / x[i];
+        }
+        else if (choice == 2) {
+            for (int i = 0; i < N; i++) y[i] = pow(x[i], 5);
+        }
+        else {
+            cout << "Введите значения y:\n";
+            for (int i = 0; i < N; i++) cin >> y[i];
+        }
+        return choice;
+    }
+
+    double factorial(int n) {
+        double result = 1.0;
+        for (int i = 2; i <= n; i++) result *= i;
+        return result;
+    }
+
+    // Полином для первой формулы Гаусса
+    double gaussPolynomial(double q, int k) {
+        if (k == 0) return 1.0;
+        double result = 1.0;
+        for (int i = 0; i < k; i++) {
+            if (i % 2 == 0) result *= (q - i / 2);
+            else result *= (q + (i + 1) / 2);
+        }
+        return result;
+    }
+
+    void buildDiffTable() {
+        for (int i = 0; i < N; i++) d[i][0] = y[i];
+        for (int j = 1; j < N; j++)
+            for (int i = 0; i < N - j; i++)
+                d[i][j] = d[i + 1][j - 1] - d[i][j - 1];
+    }
+
+    void printDiffTable() {
+        cout << "\nТАБЛИЦА КОНЕЧНЫХ РАЗНОСТЕЙ:\n";
+        cout << "i\tx\t\ty";
+        for (int j = 1; j < N; j++) cout << "\t\tD" << j << "_y";
+        cout << "\n------------------------------------------------------------------------\n";
+        for (int i = 0; i < N; i++) {
+            cout << i << "\t" << fixed << setprecision(2) << x[i];
+            cout << "\t" << scientific << setprecision(6) << d[i][0];
+            for (int j = 1; j < N - i; j++) cout << "\t" << scientific << setprecision(6) << d[i][j];
+            cout << "\n";
+        }
+    }
+
+    double interpolate(double X) {
+        // Если попали точно в узел - возвращаем значение без мучений
+        for (int i = 0; i < N; i++) {
+            if (fabs(X - x[i]) < 1e-9) return y[i];
+        }
+
+        double q = (X - x[mid]) / h;
+        double sum = d[mid][0];
+
+        for (int k = 1; k < N; k++) {
+            int idx = mid - (k / 2);
+            if (idx < 0 || idx >= N - k) break;
+            sum += gaussPolynomial(q, k) * d[idx][k] / factorial(k);
+        }
+        return sum;
+    }
+
+    void printResults(int choice) {
+        cout << "\nРЕЗУЛЬТАТЫ ИНТЕРПОЛЯЦИИ В УЗЛАХ:\n";
+        cout << left << setw(10) << "x" << setw(18) << "Интерполяция";
+        if (choice == 1 || choice == 2) cout << setw(18) << "Точное" << "Ошибка";
+        cout << "\n------------------------------------------------------------------------\n";
+
+        for (int i = 0; i < N; i++) {
+            double interp = interpolate(x[i]);
+            cout << fixed << setprecision(2) << left << setw(10) << x[i]
+                << scientific << setprecision(6) << setw(18) << interp;
+
+            if (choice == 1) {
+                double exact = 1.0 / x[i];
+                cout << setw(18) << exact << (interp - exact);
+            }
+            else if (choice == 2) {
+                double exact = pow(x[i], 5);
+                cout << setw(18) << exact << (interp - exact);
+            }
+            cout << "\n";
+        }
+    }
+};
+
+int main() {
+    setlocale(LC_ALL, "Russian");
+
+    cout << "Введите количество узлов N: ";
+    int N;
+    if (!(cin >> N) || N <= 0) return 0;
+
+    GaussInterpolator G(N);
+
+    while (true) {
+        try {
+            G.readX();
+            break;
+        }
+        catch (const char* msg) {
+            cout << msg << " Попробуйте снова.\n";
+        }
+    }
+
+    int choice = G.readY();
+    G.buildDiffTable();
+    G.printDiffTable();
+    G.printResults(choice);
+
+    return 0;
+}
